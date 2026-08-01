@@ -32,42 +32,42 @@
   <div class="app-box">
     <!-- HALAMAN UTAMA -->
     <div id="v-pilihan">
-      <h2>?? Portal Absensi</h2>
+      <h2>🏢 Portal Absensi</h2>
       <p style="color: #666; font-size: 14px;">Silakan pilih menu masuk:</p>
-      <button class="btn-c b-admin" onclick="bukaLogin('admin')">?? Login Admin</button>
-      <button class="btn-c b-karyawan" onclick="bukaLogin('karyawan')" style="margin-top: 12px;">?? Login Karyawan</button>
+      <button class="btn-c b-admin" onclick="bukaLogin('admin')">🔐 Login Admin</button>
+      <button class="btn-c b-karyawan" onclick="bukaLogin('karyawan')" style="margin-top: 12px;">📸 Login Karyawan</button>
     </div>
 
     <!-- HALAMAN LOGIN -->
     <div id="v-login" class="d-none">
-      <h2 id="l-title">?? Login</h2>
+      <h2 id="l-title">🔐 Login</h2>
       <div class="fg"><label>Username:</label><input type="text" id="l-user"></div>
       <div class="fg"><label>Password:</label><input type="password" id="l-pass"></div>
       <button class="btn-c" onclick="prosesLogin()">Masuk</button>
-      <button class="btn-c b-secondary" onclick="kembaliMenu()">?? Kembali</button>
+      <button class="btn-c b-secondary" onclick="kembaliMenu()">⬅️ Kembali</button>
     </div>
 
     <!-- HALAMAN KARYAWAN -->
     <div id="v-employee" class="d-none">
-      <h2>?? Absensi Karyawan</h2>
+      <h2>📸 Absensi Karyawan</h2>
       <div class="fg"><label>Nama:</label><input type="text" id="emp-nama" readonly style="background:#e9ecef;"></div>
       <div class="cam-box">
         <video id="webcam" autoplay playsinline muted></video>
         <canvas id="canvas" class="d-none"></canvas>
       </div>
-      <button id="btn-absen" class="btn-c" onclick="eksekusiAbsen()">?? Ambil Foto &amp; Kirim</button>
+      <button id="btn-absen" class="btn-c" onclick="eksekusiAbsen()">📸 Ambil Foto &amp; Kirim</button>
       <button class="btn-c b-danger" onclick="keluar()">Keluar</button>
     </div>
 
     <!-- HALAMAN ADMIN -->
     <div id="v-admin" class="d-none">
-      <h2>?? Dashboard Admin</h2>
+      <h2>📊 Dashboard Admin</h2>
       <div class="tab-n">
-        <button id="t-rek-btn" class="active" onclick="gantiTab('rekap')">?? Rekap</button>
-        <button id="t-kar-btn" onclick="gantiTab('karyawan')">?? Karyawan</button>
+        <button id="t-rek-btn" class="active" onclick="gantiTab('rekap')">📋 Rekap</button>
+        <button id="t-kar-btn" onclick="gantiTab('karyawan')">👥 Karyawan</button>
       </div>
       <div id="div-rekap">
-        <button class="btn-c" onclick="muatRekap()" style="background:#28a745; margin-bottom:8px;">?? Muat Ulang</button>
+        <button class="btn-c" onclick="muatRekap()" style="background:#28a745; margin-bottom:8px;">🔄 Muat Ulang</button>
         <div class="tbl-resp"><table><thead><tr><th>Waktu/Nama</th><th>Foto</th><th>Aksi</th></tr></thead><tbody id="tb-rekap"></tbody></table></div>
       </div>
       <div id="div-karyawan" class="d-none">
@@ -84,32 +84,22 @@
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQN3kKE1dxCocxgfbMOcvHsZnNbOlBCcsvPS1w0TFe/dev";
     let mediaStream = null, selectedRole = '';
 
-    function reqServer(params) {
-      return new Promise((resolve, reject) => {
-        const cb = 'cb_' + Math.random().toString(36).substring(7);
+    async function reqServer(params) {
+      try {
         const uParams = new URLSearchParams(params);
-        uParams.append('callback', cb);
-        
-        window[cb] = function(res) {
-          delete window[cb];
-          document.getElementById(sId)?.remove();
-          resolve(res);
-        };
-        
-        const sId = 's_' + cb;
-        const scr = document.createElement('script');
-        scr.id = sId;
-        scr.src = SCRIPT_URL + '?' + uParams.toString();
-        scr.onerror = () => { delete window[cb]; reject(); };
-        document.body.appendChild(scr);
-      });
+        let response = await fetch(SCRIPT_URL + '?' + uParams.toString());
+        let res = await response.json();
+        return res;
+      } catch (err) {
+        return { status: 'error', message: 'Koneksi server gagal: ' + err.message };
+      }
     }
 
     function bukaLogin(role) {
       selectedRole = role;
       document.getElementById('v-pilihan').classList.add('d-none');
       document.getElementById('v-login').classList.remove('d-none');
-      document.getElementById('l-title').innerText = role === 'admin' ? '?? Login Admin' : '?? Login Karyawan';
+      document.getElementById('l-title').innerText = role === 'admin' ? '🔐 Login Admin' : '📸 Login Karyawan';
       document.getElementById('l-user').value = role === 'admin' ? 'admin' : '';
       document.getElementById('l-pass').value = '';
     }
@@ -193,6 +183,7 @@
       let res = await reqServer({ action: 'getAbsensi' });
       let tb = document.getElementById('tb-rekap');
       tb.innerHTML = '';
+      if(!res.data) return;
       res.data.forEach(r => {
         tb.innerHTML += `<tr><td><b>${r.nama}</b><br>${new Date(r.timestamp).toLocaleString()}</td><td><a href="${r.foto}" target="_blank">Foto</a></td><td><button onclick="hapusRekap(${r.rowIndex})">Hapus</button></td></tr>`;
       });
@@ -206,6 +197,7 @@
       let res = await reqServer({ action: 'getKaryawan' });
       let tb = document.getElementById('tb-kar');
       tb.innerHTML = '';
+      if(!res.data) return;
       res.data.forEach(r => {
         tb.innerHTML += `<tr><td>${r.username}</td><td>${r.password}</td><td><button onclick="hapusKar('${r.username}')">Hapus</button></td></tr>`;
       });
