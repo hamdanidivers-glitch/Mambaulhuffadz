@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal Sistem Absensi</title>
+  <style>
+    body { margin: 0; padding: 10px; background: #f0f2f5; font-family: sans-serif; box-sizing: border-box; }
+    .app-box { max-width: 500px; margin: 10px auto; padding: 15px; background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    .d-none { display: none !important; }
+    .fg { margin-bottom: 12px; }
+    .fg label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+    .fg input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+    .btn-c { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 8px; }
+    .b-admin { background: #6f42c1; }
+    .b-karyawan { background: #28a745; }
+    .b-danger { background: #dc3545; }
+    .b-secondary { background: #6c757d; }
+    .cam-box { position: relative; width: 100%; min-height: 250px; margin: 10px 0; border-radius: 12px; overflow: hidden; background: #000; text-align: center; display: flex; align-items: center; justify-content: center; }
+    #webcam, #canvas { width: 100%; max-height: 350px; object-fit: cover; display: block; border-radius: 12px; }
+    .alrt { padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; text-align: center; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+    th, td { border: 1px solid #ddd; padding: 7px; text-align: left; word-break: break-word; }
+    th { background-color: #f2f2f2; }
+    .tbl-resp { max-height: 280px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; }
+    .tab-n { display: flex; gap: 5px; margin-bottom: 12px; }
+    .tab-n button { flex: 1; padding: 9px; font-size: 12px; font-weight: bold; border: none; background: #e9ecef; cursor: pointer; border-radius: 6px; }
+    .tab-n button.active { background: #007bff; color: white; }
+  </style>
+</head>
+<body>
+  <div class="app-box">
+    <!-- HALAMAN UTAMA -->
+    <div id="v-pilihan">
+      <h2>?? Portal Absensi</h2>
+      <p style="color: #666; font-size: 14px;">Silakan pilih menu masuk:</p>
+      <button class="btn-c b-admin" onclick="bukaLogin('admin')">?? Login Admin</button>
+      <button class="btn-c b-karyawan" onclick="bukaLogin('karyawan')" style="margin-top: 12px;">?? Login Karyawan</button>
+    </div>
+
+    <!-- HALAMAN LOGIN -->
+    <div id="v-login" class="d-none">
+      <h2 id="l-title">?? Login</h2>
+      <div class="fg"><label>Username:</label><input type="text" id="l-user"></div>
+      <div class="fg"><label>Password:</label><input type="password" id="l-pass"></div>
+      <button class="btn-c" onclick="prosesLogin()">Masuk</button>
+      <button class="btn-c b-secondary" onclick="kembaliMenu()">?? Kembali</button>
+    </div>
+
+    <!-- HALAMAN KARYAWAN -->
+    <div id="v-employee" class="d-none">
+      <h2>?? Absensi Karyawan</h2>
+      <div class="fg"><label>Nama:</label><input type="text" id="emp-nama" readonly style="background:#e9ecef;"></div>
+      <div class="cam-box">
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="canvas" class="d-none"></canvas>
+      </div>
+      <button id="btn-absen" class="btn-c" onclick="eksekusiAbsen()">?? Ambil Foto &amp; Kirim</button>
+      <button class="btn-c b-danger" onclick="keluar()">Keluar</button>
+    </div>
+
+    <!-- HALAMAN ADMIN -->
+    <div id="v-admin" class="d-none">
+      <h2>?? Dashboard Admin</h2>
+      <div class="tab-n">
+        <button id="t-rek-btn" class="active" onclick="gantiTab('rekap')">?? Rekap</button>
+        <button id="t-kar-btn" onclick="gantiTab('karyawan')">?? Karyawan</button>
+      </div>
+      <div id="div-rekap">
+        <button class="btn-c" onclick="muatRekap()" style="background:#28a745; margin-bottom:8px;">?? Muat Ulang</button>
+        <div class="tbl-resp"><table><thead><tr><th>Waktu/Nama</th><th>Foto</th><th>Aksi</th></tr></thead><tbody id="tb-rekap"></tbody></table></div>
+      </div>
+      <div id="div-karyawan" class="d-none">
+        <div class="fg"><label>User:</label><input type="text" id="k-user"></div>
+        <div class="fg"><label>Pass:</label><input type="password" id="k-pass"></div>
+        <button class="btn-c" onclick="tambahKar()">Tambah Karyawan</button>
+        <div class="tbl-resp" style="margin-top:10px;"><table><thead><tr><th>User</th><th>Pass</th><th>Aksi</th></tr></thead><tbody id="tb-kar"></tbody></table></div>
+      </div>
+      <button class="btn-c b-danger" onclick="keluar()">Keluar</button>
+    </div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQN3kKE1dxCocxgfbMOcvHsZnNbOlBCcsvPS1w0TFe/dev";
+    let mediaStream = null, selectedRole = '';
+
+    function reqServer(params) {
+      return new Promise((resolve, reject) => {
+        const cb = 'cb_' + Math.random().toString(36).substring(7);
+        const uParams = new URLSearchParams(params);
+        uParams.append('callback', cb);
+        
+        window[cb] = function(res) {
+          delete window[cb];
+          document.getElementById(sId)?.remove();
+          resolve(res);
+        };
+        
+        const sId = 's_' + cb;
+        const scr = document.createElement('script');
+        scr.id = sId;
+        scr.src = SCRIPT_URL + '?' + uParams.toString();
+        scr.onerror = () => { delete window[cb]; reject(); };
+        document.body.appendChild(scr);
+      });
+    }
+
+    function bukaLogin(role) {
+      selectedRole = role;
+      document.getElementById('v-pilihan').classList.add('d-none');
+      document.getElementById('v-login').classList.remove('d-none');
+      document.getElementById('l-title').innerText = role === 'admin' ? '?? Login Admin' : '?? Login Karyawan';
+      document.getElementById('l-user').value = role === 'admin' ? 'admin' : '';
+      document.getElementById('l-pass').value = '';
+    }
+
+    function kembaliMenu() {
+      document.getElementById('v-login').classList.add('d-none');
+      document.getElementById('v-pilihan').classList.remove('d-none');
+    }
+
+    async function prosesLogin() {
+      let u = document.getElementById('l-user').value.trim();
+      let p = document.getElementById('l-pass').value.trim();
+      if(!u || !p) return alert('Isi semua kolom!');
+      
+      let res = await reqServer({ action: 'login', username: u, password: p });
+      if(res.status === 'success') {
+        if(selectedRole === 'admin' && res.role !== 'admin') return alert('Bukan akun admin!');
+        if(selectedRole === 'karyawan' && res.role === 'admin') return alert('Gunakan menu admin!');
+        
+        if(res.role === 'admin') {
+          tampilView('admin'); muatRekap();
+        } else {
+          document.getElementById('emp-nama').value = u;
+          tampilView('employee'); aktifKamera();
+        }
+      } else { alert(res.message); }
+    }
+
+    function tampilView(v) {
+      ['v-pilihan', 'v-login', 'v-employee', 'v-admin'].forEach(id => document.getElementById(id).classList.add('d-none'));
+      document.getElementById('v-' + v).classList.remove('d-none');
+      if(v !== 'employee') matikanKamera();
+    }
+
+    function keluar() { tampilView('pilihan'); }
+
+    async function aktifKamera() {
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        document.getElementById('webcam').srcObject = mediaStream;
+      } catch(e) { alert('Gagal buka kamera: ' + e.message); }
+    }
+
+    function matikanKamera() {
+      if(mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+    }
+
+    async function eksekusiAbsen() {
+      let nama = document.getElementById('emp-nama').value;
+      let vid = document.getElementById('webcam');
+      let canv = document.getElementById('canvas');
+      
+      if(!vid.videoWidth) return alert('Kamera belum siap!');
+      
+      canv.width = 320; canv.height = vid.videoHeight * (320 / vid.videoWidth);
+      canv.getContext('2d').drawImage(vid, 0, 0, canv.width, canv.height);
+      let b64 = canv.toDataURL('image/jpeg', 0.6);
+
+      alert('Menyimpan absen...');
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => { await kirimAbsen(nama, pos.coords.latitude, pos.coords.longitude, b64); },
+        async () => { await kirimAbsen(nama, 0, 0, b64); },
+        { timeout: 10000 }
+      );
+    }
+
+    async function kirimAbsen(nama, lat, lng, b64) {
+      let res = await reqServer({ action: 'submitAbsensi', nama: nama, lat: lat, lng: lng, fotoBase64: b64 });
+      alert(res.message);
+    }
+
+    function gantiTab(t) {
+      document.getElementById('t-rek-btn').classList.toggle('active', t === 'rekap');
+      document.getElementById('t-kar-btn').classList.toggle('active', t === 'karyawan');
+      document.getElementById('div-rekap').classList.toggle('d-none', t !== 'rekap');
+      document.getElementById('div-karyawan').classList.toggle('d-none', t !== 'karyawan');
+      if(t === 'rekap') muatRekap(); else muatKar();
+    }
+
+    async function muatRekap() {
+      let res = await reqServer({ action: 'getAbsensi' });
+      let tb = document.getElementById('tb-rekap');
+      tb.innerHTML = '';
+      res.data.forEach(r => {
+        tb.innerHTML += `<tr><td><b>${r.nama}</b><br>${new Date(r.timestamp).toLocaleString()}</td><td><a href="${r.foto}" target="_blank">Foto</a></td><td><button onclick="hapusRekap(${r.rowIndex})">Hapus</button></td></tr>`;
+      });
+    }
+
+    async function hapusRekap(idx) {
+      if(confirm('Hapus data?')) { await reqServer({ action: 'hapusAbsensi', rowIndex: idx }); muatRekap(); }
+    }
+
+    async function muatKar() {
+      let res = await reqServer({ action: 'getKaryawan' });
+      let tb = document.getElementById('tb-kar');
+      tb.innerHTML = '';
+      res.data.forEach(r => {
+        tb.innerHTML += `<tr><td>${r.username}</td><td>${r.password}</td><td><button onclick="hapusKar('${r.username}')">Hapus</button></td></tr>`;
+      });
+    }
+
+    async function tambahKar() {
+      let u = document.getElementById('k-user').value;
+      let p = document.getElementById('k-pass').value;
+      let res = await reqServer({ action: 'tambahKaryawan', username: u, password: p });
+      alert(res.message); muatKar();
+    }
+
+    async function hapusKar(u) {
+      if(confirm('Hapus karyawan?')) { await reqServer({ action: 'hapusKaryawan', username: u }); muatKar(); }
+    }
+  </script>
+</body>
+</html>
