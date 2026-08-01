@@ -18,7 +18,6 @@
     .b-secondary { background: #6c757d; }
     .cam-box { position: relative; width: 100%; min-height: 250px; margin: 10px 0; border-radius: 12px; overflow: hidden; background: #000; text-align: center; display: flex; align-items: center; justify-content: center; }
     #webcam, #canvas { width: 100%; max-height: 350px; object-fit: cover; display: block; border-radius: 12px; }
-    .alrt { padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; text-align: center; font-weight: bold; }
     table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
     th, td { border: 1px solid #ddd; padding: 7px; text-align: left; word-break: break-word; }
     th { background-color: #f2f2f2; }
@@ -32,42 +31,42 @@
   <div class="app-box">
     <!-- HALAMAN UTAMA -->
     <div id="v-pilihan">
-      <h2>🏢 Portal Absensi</h2>
+      <h2>?? Portal Absensi</h2>
       <p style="color: #666; font-size: 14px;">Silakan pilih menu masuk:</p>
-      <button class="btn-c b-admin" onclick="bukaLogin('admin')">🔐 Login Admin</button>
-      <button class="btn-c b-karyawan" onclick="bukaLogin('karyawan')" style="margin-top: 12px;">📸 Login Karyawan</button>
+      <button class="btn-c b-admin" onclick="bukaLogin('admin')">?? Login Admin</button>
+      <button class="btn-c b-karyawan" onclick="bukaLogin('karyawan')" style="margin-top: 12px;">?? Login Karyawan</button>
     </div>
 
     <!-- HALAMAN LOGIN -->
     <div id="v-login" class="d-none">
-      <h2 id="l-title">🔐 Login</h2>
+      <h2 id="l-title">?? Login</h2>
       <div class="fg"><label>Username:</label><input type="text" id="l-user"></div>
       <div class="fg"><label>Password:</label><input type="password" id="l-pass"></div>
       <button class="btn-c" onclick="prosesLogin()">Masuk</button>
-      <button class="btn-c b-secondary" onclick="kembaliMenu()">⬅️ Kembali</button>
+      <button class="btn-c b-secondary" onclick="kembaliMenu()">?? Kembali</button>
     </div>
 
     <!-- HALAMAN KARYAWAN -->
     <div id="v-employee" class="d-none">
-      <h2>📸 Absensi Karyawan</h2>
+      <h2>?? Absensi Karyawan</h2>
       <div class="fg"><label>Nama:</label><input type="text" id="emp-nama" readonly style="background:#e9ecef;"></div>
       <div class="cam-box">
         <video id="webcam" autoplay playsinline muted></video>
         <canvas id="canvas" class="d-none"></canvas>
       </div>
-      <button id="btn-absen" class="btn-c" onclick="eksekusiAbsen()">📸 Ambil Foto &amp; Kirim</button>
+      <button id="btn-absen" class="btn-c" onclick="eksekusiAbsen()">?? Ambil Foto &amp; Kirim</button>
       <button class="btn-c b-danger" onclick="keluar()">Keluar</button>
     </div>
 
     <!-- HALAMAN ADMIN -->
     <div id="v-admin" class="d-none">
-      <h2>📊 Dashboard Admin</h2>
+      <h2>?? Dashboard Admin</h2>
       <div class="tab-n">
-        <button id="t-rek-btn" class="active" onclick="gantiTab('rekap')">📋 Rekap</button>
-        <button id="t-kar-btn" onclick="gantiTab('karyawan')">👥 Karyawan</button>
+        <button id="t-rek-btn" class="active" onclick="gantiTab('rekap')">?? Rekap</button>
+        <button id="t-kar-btn" onclick="gantiTab('karyawan')">?? Karyawan</button>
       </div>
       <div id="div-rekap">
-        <button class="btn-c" onclick="muatRekap()" style="background:#28a745; margin-bottom:8px;">🔄 Muat Ulang</button>
+        <button class="btn-c" onclick="muatRekap()" style="background:#28a745; margin-bottom:8px;">?? Muat Ulang</button>
         <div class="tbl-resp"><table><thead><tr><th>Waktu/Nama</th><th>Foto</th><th>Aksi</th></tr></thead><tbody id="tb-rekap"></tbody></table></div>
       </div>
       <div id="div-karyawan" class="d-none">
@@ -84,36 +83,26 @@
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQN3kKE1dxCocxgfbMOcvHsZnNbOlBCcsvPS1w0TFe/dev";
     let mediaStream = null, selectedRole = '';
 
-    function reqServer(params) {
-      return new Promise((resolve, reject) => {
-        const cb = 'cb_' + Math.random().toString(36).substring(7);
-        const uParams = new URLSearchParams(params);
-        uParams.append('callback', cb);
-        
-        window[cb] = function(res) {
-          delete window[cb];
-          document.getElementById(sId)?.remove();
-          resolve(res);
-        };
-        
-        const sId = 's_' + cb;
-        const scr = document.createElement('script');
-        scr.id = sId;
-        scr.src = SCRIPT_URL + '?' + uParams.toString();
-        scr.onerror = () => { 
-          delete window[cb]; 
-          document.getElementById(sId)?.remove();
-          resolve({ status: 'error', message: 'Koneksi server gagal' }); 
-        };
-        document.body.appendChild(scr);
-      });
+    async function reqServer(params) {
+      try {
+        let response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(params)
+        });
+        let res = await response.json();
+        return res;
+      } catch (err) {
+        return { status: 'error', message: 'Koneksi server gagal: ' + err.message };
+      }
     }
 
     function bukaLogin(role) {
       selectedRole = role;
       document.getElementById('v-pilihan').classList.add('d-none');
       document.getElementById('v-login').classList.remove('d-none');
-      document.getElementById('l-title').innerText = role === 'admin' ? '🔐 Login Admin' : '📸 Login Karyawan';
+      document.getElementById('l-title').innerText = role === 'admin' ? '?? Login Admin' : '?? Login Karyawan';
       document.getElementById('l-user').value = role === 'admin' ? 'admin' : '';
       document.getElementById('l-pass').value = '';
     }
