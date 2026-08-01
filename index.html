@@ -31,42 +31,42 @@
   <div class="app-box">
     <!-- HALAMAN UTAMA -->
     <div id="v-pilihan">
-      <h2>?? Portal Absensi</h2>
+      <h2>🏢 Portal Absensi</h2>
       <p style="color: #666; font-size: 14px;">Silakan pilih menu masuk:</p>
-      <button class="btn-c b-admin" onclick="bukaLogin('admin')">?? Login Admin</button>
-      <button class="btn-c b-karyawan" onclick="bukaLogin('karyawan')" style="margin-top: 12px;">?? Login Karyawan</button>
+      <button class="btn-c b-admin" onclick="bukaLogin('admin')">🔐 Login Admin</button>
+      <button class="btn-c b-karyawan" onclick="bukaLogin('karyawan')" style="margin-top: 12px;">📸 Login Karyawan</button>
     </div>
 
     <!-- HALAMAN LOGIN -->
     <div id="v-login" class="d-none">
-      <h2 id="l-title">?? Login</h2>
+      <h2 id="l-title">🔐 Login</h2>
       <div class="fg"><label>Username:</label><input type="text" id="l-user"></div>
       <div class="fg"><label>Password:</label><input type="password" id="l-pass"></div>
       <button class="btn-c" onclick="prosesLogin()">Masuk</button>
-      <button class="btn-c b-secondary" onclick="kembaliMenu()">?? Kembali</button>
+      <button class="btn-c b-secondary" onclick="kembaliMenu()">⬅️ Kembali</button>
     </div>
 
     <!-- HALAMAN KARYAWAN -->
     <div id="v-employee" class="d-none">
-      <h2>?? Absensi Karyawan</h2>
+      <h2>📸 Absensi Karyawan</h2>
       <div class="fg"><label>Nama:</label><input type="text" id="emp-nama" readonly style="background:#e9ecef;"></div>
       <div class="cam-box">
         <video id="webcam" autoplay playsinline muted></video>
         <canvas id="canvas" class="d-none"></canvas>
       </div>
-      <button id="btn-absen" class="btn-c" onclick="eksekusiAbsen()">?? Ambil Foto &amp; Kirim</button>
+      <button id="btn-absen" class="btn-c" onclick="eksekusiAbsen()">📸 Ambil Foto &amp; Kirim</button>
       <button class="btn-c b-danger" onclick="keluar()">Keluar</button>
     </div>
 
     <!-- HALAMAN ADMIN -->
     <div id="v-admin" class="d-none">
-      <h2>?? Dashboard Admin</h2>
+      <h2>📊 Dashboard Admin</h2>
       <div class="tab-n">
-        <button id="t-rek-btn" class="active" onclick="gantiTab('rekap')">?? Rekap</button>
-        <button id="t-kar-btn" onclick="gantiTab('karyawan')">?? Karyawan</button>
+        <button id="t-rek-btn" class="active" onclick="gantiTab('rekap')">📋 Rekap</button>
+        <button id="t-kar-btn" onclick="gantiTab('karyawan')">👥 Karyawan</button>
       </div>
       <div id="div-rekap">
-        <button class="btn-c" onclick="muatRekap()" style="background:#28a745; margin-bottom:8px;">?? Muat Ulang</button>
+        <button class="btn-c" onclick="muatRekap()" style="background:#28a745; margin-bottom:8px;">🔄 Muat Ulang</button>
         <div class="tbl-resp"><table><thead><tr><th>Waktu/Nama</th><th>Foto</th><th>Aksi</th></tr></thead><tbody id="tb-rekap"></tbody></table></div>
       </div>
       <div id="div-karyawan" class="d-none">
@@ -102,7 +102,7 @@
       selectedRole = role;
       document.getElementById('v-pilihan').classList.add('d-none');
       document.getElementById('v-login').classList.remove('d-none');
-      document.getElementById('l-title').innerText = role === 'admin' ? '?? Login Admin' : '?? Login Karyawan';
+      document.getElementById('l-title').innerText = role === 'admin' ? '🔐 Login Admin' : '📸 Login Karyawan';
       document.getElementById('l-user').value = role === 'admin' ? 'admin' : '';
       document.getElementById('l-pass').value = '';
     }
@@ -141,9 +141,19 @@
 
     async function aktifKamera() {
       try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-        document.getElementById('webcam').srcObject = mediaStream;
-      } catch(e) { alert('Gagal buka kamera: ' + e.message); }
+        matikanKamera();
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, 
+          audio: false 
+        });
+        let videoElement = document.getElementById('webcam');
+        videoElement.srcObject = mediaStream;
+        videoElement.onloadedmetadata = () => {
+          videoElement.play().catch(e => console.log("Autoplay blocked:", e));
+        };
+      } catch(e) { 
+        alert('Gagal membuka kamera. Pastikan Anda memberikan izin akses kamera di pengaturan browser: ' + e.message); 
+      }
     }
 
     function matikanKamera() {
@@ -209,6 +219,7 @@
     async function tambahKar() {
       let u = document.getElementById('k-user').value;
       let p = document.getElementById('k-pass').value;
+      if(!u || !p) return alert('Isi username dan password!');
       let res = await reqServer({ action: 'tambahKaryawan', username: u, password: p });
       alert(res.message); muatKar();
     }
