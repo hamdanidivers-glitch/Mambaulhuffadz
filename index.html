@@ -84,15 +84,29 @@
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQN3kKE1dxCocxgfbMOcvHsZnNbOlBCcsvPS1w0TFe/dev";
     let mediaStream = null, selectedRole = '';
 
-    async function reqServer(params) {
-      try {
+    function reqServer(params) {
+      return new Promise((resolve, reject) => {
+        const cb = 'cb_' + Math.random().toString(36).substring(7);
         const uParams = new URLSearchParams(params);
-        let response = await fetch(SCRIPT_URL + '?' + uParams.toString());
-        let res = await response.json();
-        return res;
-      } catch (err) {
-        return { status: 'error', message: 'Koneksi server gagal: ' + err.message };
-      }
+        uParams.append('callback', cb);
+        
+        window[cb] = function(res) {
+          delete window[cb];
+          document.getElementById(sId)?.remove();
+          resolve(res);
+        };
+        
+        const sId = 's_' + cb;
+        const scr = document.createElement('script');
+        scr.id = sId;
+        scr.src = SCRIPT_URL + '?' + uParams.toString();
+        scr.onerror = () => { 
+          delete window[cb]; 
+          document.getElementById(sId)?.remove();
+          resolve({ status: 'error', message: 'Koneksi server gagal' }); 
+        };
+        document.body.appendChild(scr);
+      });
     }
 
     function bukaLogin(role) {
